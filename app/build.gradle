@@ -33,3 +33,4 @@ dependencies {
     // XposedBridgeApi loaded from local libs folder (downloaded by CI)
     compileOnly fileTree(dir: 'libs', include: ['*.jar'])
 }
+
