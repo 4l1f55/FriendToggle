@@ -1,0 +1,102 @@
+name: Build FriendToggle
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build XposedBridgeApi stub jar
+        run: |
+          mkdir -p app/libs
+          mkdir -p /tmp/xstub/de/robv/android/xposed/callbacks
+
+          cat > /tmp/xstub/de/robv/android/xposed/IXposedHookLoadPackage.java << 'JAVA'
+          package de.robv.android.xposed;
+          import de.robv.android.xposed.callbacks.XC_LoadPackage;
+          public interface IXposedHookLoadPackage {
+              void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable;
+          }
+          JAVA
+
+          cat > /tmp/xstub/de/robv/android/xposed/XposedBridge.java << 'JAVA'
+          package de.robv.android.xposed;
+          public class XposedBridge {
+              public static void log(String text) {}
+              public static void log(Throwable t) {}
+          }
+          JAVA
+
+          cat > /tmp/xstub/de/robv/android/xposed/XC_MethodHook.java << 'JAVA'
+          package de.robv.android.xposed;
+          public abstract class XC_MethodHook {
+              protected void beforeHookedMethod(MethodHookParam param) throws Throwable {}
+              protected void afterHookedMethod(MethodHookParam param) throws Throwable {}
+              public class MethodHookParam {
+                  public Object thisObject;
+                  public Object[] args;
+                  private Object result;
+                  private Throwable throwable;
+                  public Object getResult() { return result; }
+                  public void setResult(Object result) { this.result = result; }
+                  public Throwable getThrowable() { return throwable; }
+                  public boolean hasThrowable() { return throwable != null; }
+              }
+          }
+          JAVA
+
+          cat > /tmp/xstub/de/robv/android/xposed/XposedHelpers.java << 'JAVA'
+          package de.robv.android.xposed;
+          public class XposedHelpers {
+              public static Class<?> findClass(String className, ClassLoader classLoader) { return null; }
+              public static Object findAndHookMethod(Class<?> clazz, String methodName, Object... args) { return null; }
+              public static Object findAndHookMethod(String className, ClassLoader classLoader, String methodName, Object... args) { return null; }
+          }
+          JAVA
+
+          cat > /tmp/xstub/de/robv/android/xposed/callbacks/XC_LoadPackage.java << 'JAVA'
+          package de.robv.android.xposed.callbacks;
+          public class XC_LoadPackage {
+              public static class LoadPackageParam {
+                  public String packageName;
+                  public ClassLoader classLoader;
+              }
+          }
+          JAVA
+
+          cd /tmp/xstub
+          find . -name "*.java" > sources.txt
+          javac -source 8 -target 8 @sources.txt
+          jar cf /home/runner/work/FriendToggle/FriendToggle/app/libs/XposedBridgeApi.jar \
+            $(find . -name "*.class")
+          echo "Stub jar created: $(ls -lh app/libs/XposedBridgeApi.jar 2>/dev/null || ls -lh /home/runner/work/FriendToggle/FriendToggle/app/libs/XposedBridgeApi.jar)"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.2'
+
+      - name: Build APK
+        run: gradle assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FriendToggle-LSPosed
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+          
