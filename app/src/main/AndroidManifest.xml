@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.friendtoggle">
+
+    <application
+        android:allowBackup="true"
+        android:label="FriendToggle">
+
+        <meta-data
+            android:name="xposedmodule"
+            android:value="true" />
+        <meta-data
+            android:name="xposeddescription"
+            android:value="Restores rear display toggle in Xiaomi Camera v6 for Mi 11 Ultra" />
+        <meta-data
+            android:name="xposedminversion"
+            android:value="93" />
+
+    </application>
+
+</manifest>
